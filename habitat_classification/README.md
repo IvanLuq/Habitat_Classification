@@ -84,9 +84,8 @@ The current training pipeline is implemented in `train_cnn.py` and uses only the
 
 - Input shape is `(15, 35, 35)`.
 - Per-channel mean and std are computed from training samples only to avoid leakage.
-- Saved normalization files:
-	- `weights/channel_mean.npy`
-	- `weights/channel_std.npy`
+- Saved normalization file: `weights/channel_mean.npy`
+- Saved normalization file: `weights/channel_std.npy`
 
 ### 3) Data augmentation
 

@@ -1,0 +1,9 @@
+# Python cache artifacts
+__pycache__/
+*.py[cod]
+
+# Local OS artifacts
+.DS_Store
+
+# Large local training arrays (not for GitHub)
+data/train/

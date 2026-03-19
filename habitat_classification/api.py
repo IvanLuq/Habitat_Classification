@@ -1,5 +1,5 @@
 """
-FastAPI endpoint for habitat classification predictions.
+FastAPI endpoint for habitat classification predictions with API key authentication.
 
 Usage:
     python api.py
@@ -7,14 +7,22 @@ Usage:
 The server will start on http://0.0.0.0:4321
 """
 
+import os
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from model import predict
 from utils import decode_patch
 
 HOST = "0.0.0.0"
 PORT = 4321
+
+# Load API key from environment variable
+API_KEY = os.getenv("API_KEY", "your-default-api-key-change-this")
+
+# Security scheme
+security = HTTPBearer()
 
 
 class PredictRequest(BaseModel):
@@ -34,31 +42,52 @@ app = FastAPI(
 )
 
 
+def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """
+    Verify the bearer token matches the API key.
+    
+    Raises HTTPException if token is invalid.
+    """
+    if credentials.credentials != API_KEY:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return credentials.credentials
+
+
 @app.get("/")
 def index():
-    """Health check endpoint."""
+    """Health check endpoint (no authentication required)."""
     return {"status": "running", "message": "Habitat Classification API"}
 
 
 @app.get("/api")
 def api_info():
-    """API information endpoint."""
+    """API information endpoint (no authentication required)."""
     return {
         "service": "habitat-classification",
         "version": "1.0.0",
+        "authentication": "Bearer token required for /predict endpoint",
         "endpoints": {
             "/": "Health check",
             "/api": "API information",
-            "/predict": "POST - Classify a patch"
+            "/predict": "POST - Classify a patch (requires authentication)"
         }
     }
 
 
 @app.post("/predict", response_model=PredictResponse)
-def predict_endpoint(request: PredictRequest):
+def predict_endpoint(
+    request: PredictRequest,
+    token: str = Depends(verify_token)
+):
     """
     Classify a satellite image patch.
 
+    Requires: Bearer token in Authorization header
+    
     The patch should be base64-encoded numpy array of shape (15, 35, 35) with dtype float32.
 
     Returns the predicted habitat class index (0-70).
@@ -74,4 +103,6 @@ def predict_endpoint(request: PredictRequest):
 
 if __name__ == "__main__":
     print(f"Starting server on http://{HOST}:{PORT}")
+    print(f"API Key: {API_KEY}")
+    print("Set API_KEY environment variable to change the authentication key")
     uvicorn.run("api:app", host=HOST, port=PORT, reload=False)
